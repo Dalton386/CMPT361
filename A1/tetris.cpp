@@ -2,19 +2,25 @@
 // Generated using randomly selected vertices and bisection
 
 #include "Angel.h"
+#include <iostream>
+#include <vector>
+using namespace std;
 
 //It is nice to define and use a color pallete on your software. You can put this information on another utility file.
 static vec3  base_colors[] = {
-		vec3( 1.0, 0.0, 0.0 ),
+		vec3( 0.0, 0.0, 0.0 ),		//1~6 is available for tile 
+		vec3( 1.0, 0.0, 0.0 ),		//0 is for bg
 		vec3( 0.0, 1.0, 0.0 ),
 		vec3( 0.0, 0.0, 1.0 ),
-		vec3( 0.0, 0.0, 0.0 )
+		vec3( 1.0, 1.0, 0.0 ),
+		vec3( 1.0, 0.0, 1.0 ),
+		vec3( 0.0, 1.0, 1.0 ),
 };
 
 static vec3 grid_color = vec3(0.2, 0.2, 0.2);
 
 //three triangles
-const int NumPoints = 9;
+const int NumPoints = 1200;
 
 //and two lines
 const int NumPoints1 = 64;
@@ -29,44 +35,45 @@ vec3 colors[NumPoints];
 //lines points and colors arrays
 vec2 points1[NumPoints1];
 vec3 colors1[NumPoints1];
+
+//the canvas
+int row = 20, col = 10;
+int canvas[20][10] = {0};
 //----------------------------------------------------------------------------
+void draw_canvas(void);
 
 void
 init( void )
 {
+
     //Just some hard coded data
     
-    //Vertex positions for three triangles
-    // Three triangles forming a simple Gasket
-    points[0] = vec2( -1.0, -1.0 );
-    points[1] = vec2( 0.0, -1.0 );
-    points[2] = vec2( -0.5, 0.0 );
+    //Vertex positions 
+    for (int i = 0; i < row; i++){
+    	for (int j = 0; j < col; j++){
+    		double cx = -0.9 + 0.2*j;
+    		double cy = 0.95 - 0.1*i;
+    		int cidx = 6*(i*col + j);
 
-    points[3] = vec2( 0.0, -1.0 );
-    points[4] = vec2( 0.5, 0.0 );
-    points[5] = vec2( 1.0, -1.0 );
-
-    points[6] = vec2( 0.0, 1.0 );
-    points[7] = vec2( -0.5, 0.0 );
-    points[8] = vec2( 0.5, 0.0 );
+    		points[cidx] = vec2(cx-0.1, cy+0.05);
+    		points[cidx+1] = vec2(cx-0.1, cy-0.05);
+    		points[cidx+2] = vec2(cx+0.1, cy+0.05);
+    		points[cidx+3] = vec2(cx-0.1, cy-0.05);
+    		points[cidx+4] = vec2(cx+0.1, cy+0.05);
+    		points[cidx+5] = vec2(cx+0.1, cy-0.05);
+    	}
+    }
 
     //color stuff for each vertex of each of the triangles
-    colors[0] = base_colors[0];
-    colors[1] = base_colors[0];
-    colors[2] = base_colors[1];
+    for (int i = 0; i < NumPoints; i++)
+    	colors[i] = base_colors[0];
 
-    colors[3] = base_colors[1];
-    colors[4] = base_colors[1];
-    colors[5] = base_colors[2];
-
-    colors[6] = base_colors[2];
-    colors[7] = base_colors[2];
-    colors[8] = base_colors[3];
-
+    //***************************
+    //test draw function
+    draw_canvas();
 
     //***************************
 
-    
     //Draw the grids.
     int i = 0;
     for (; i < 21; i++){
@@ -80,7 +87,6 @@ init( void )
         points1[2*i+1] = vec2((i-26)*0.2, -1);
         colors1[2*i] = colors1[2*i+1] = grid_color;
     }
-
 
     //Here we create another vertexArrayObject to render some lines. This is intended to be your grid, so since the
     //grid positions never change, you can leave this vertex array object on the initialization.
@@ -116,7 +122,7 @@ init( void )
 
     //****************************
 
-    glClearColor( 0, 0, 0, 1.0 ); // white background
+    glClearColor( 0, 0, 0, 0 ); // white background
 }
 
 //----------------------------------------------------------------------------
@@ -189,6 +195,26 @@ display( void )
 }
 
 //----------------------------------------------------------------------------
+void draw_canvas(void){
+	canvas[0][1] = canvas[0][2] = canvas[0][3] = 1;
+	canvas[19][7] = canvas[19][8] = canvas[19][9] = 3;
+	canvas[9][4] = canvas[9][5] = 5;
+
+	int row = 20, col = 10;
+    for (int i = 0; i < row; i++){
+    	for (int j = 0; j < col; j++){
+    		int cidx = 6*(i*col + j);
+
+    		colors[cidx] = base_colors[canvas[i][j] % 7];
+    		colors[cidx+1] = base_colors[canvas[i][j] % 7];
+    		colors[cidx+2] = base_colors[canvas[i][j] % 7];
+    		colors[cidx+3] = base_colors[canvas[i][j] % 7];
+    		colors[cidx+4] = base_colors[canvas[i][j] % 7];
+    		colors[cidx+5] = base_colors[canvas[i][j] % 7];
+    	}
+    }
+}
+
 
 //timed function. We intended to execute this every one second.
 void rotateDelay(int)
@@ -312,7 +338,7 @@ main( int argc, char **argv )
 
     //Similarly, we can also bind a function that will be executed 1000 miliseconds later. We bind this to the function rotateDelay.
     // We then bind this to the function "rotateDelay". The 0 in the end is the input of the rotateDelay class, it can only be an integer.
-    glutTimerFunc(1000.0, rotateDelay, 0);
+    // glutTimerFunc(1000.0, rotateDelay, 0);
 
     //Finally, we bind the keyboard events inside the class "keyboard" using the line below
     glutKeyboardFunc( keyboard );
