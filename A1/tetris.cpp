@@ -5,6 +5,7 @@
 #include <iostream>
 #include <vector>
 #include <array>
+#include <algorithm>
 
 using namespace std;
 
@@ -217,7 +218,8 @@ void draw_image(void) {
 
     for (int i = 0; i < 4; i++)
         for (int j = 0; j < 4; j++)
-            image[i + yoff - 1][j + xoff - 1] += falling[i][j];
+        	if (i + yoff - 1 >= 0)
+            	image[i + yoff - 1][j + xoff - 1] += falling[i][j];
 
     for (int i = 0; i < row; i++) {
         for (int j = 0; j < col; j++) {
@@ -239,9 +241,9 @@ bool isCollision(int x, int y) {
     for (int i = 0; i < 4; i++) {
         for (int j = 0; j < 4; j++) {
             if (falling[i][j] > 0) {
-                if (i + y < 1 || i + y > 20 || j + x < 1 || j + x > 10)
+                if (i + y > 20 || j + x < 1 || j + x > 10)
                     return true;
-                else if (canvas[i + y - 1][j + x - 1] > 0)
+                else if (i + y - 1 >= 0 && canvas[i + y - 1][j + x - 1] > 0)
                     return true;
             }
         }
@@ -290,7 +292,7 @@ void init_tilab() {
 }
 
 void init_falling() {
-    yoff = 1;
+    yoff = -2;
     xoff = rand() % 7 + 1;
     falling = tilab[xoff - 1];
 
@@ -330,12 +332,6 @@ void move_right() {
     if (!isCollision(xoff + 1, yoff)) {
         xoff++;
         draw_image();
-//        for (int i = 0; i < 20; i++){
-//            for (int j = 0; j < 10; j++)
-//                cout << image[i][j] << " ";
-//            cout << endl;
-//        }
-//        cout << "------------------------" << endl;
     }
 }
 
@@ -361,7 +357,10 @@ void move_down() {
     } else {
         for (int i = 0; i < 4; i++)
             for (int j = 0; j < 4; j++)
-                canvas[i + yoff - 1][j + xoff - 1] += falling[i][j];
+            	if (i + yoff - 1 >= 0)
+                	canvas[i + yoff - 1][j + xoff - 1] += falling[i][j];
+                else if (falling[i][j] > 0)
+                	exit(EXIT_SUCCESS);
 
         for (int i = 19; i >= 0; i--) {
             int isFilled = 1;
@@ -384,7 +383,7 @@ void move_down() {
 }
 
 //timed function. We intended to execute this every one second.
-void dropDelay() {
+void dropDelay(int) {
     move_down();
 
     //then we can set another identical event in 1000 miliseconds in the future, that is how we keep the triangle rotating
