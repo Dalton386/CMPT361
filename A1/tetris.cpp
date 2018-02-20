@@ -12,15 +12,15 @@ using namespace std;
 //It is nice to define and use a color pallete on your software. You can put this information on another utility file.
 static vec3 base_colors[] = {
         vec3(0.0, 0.0, 0.0),        //1~6 is available for tile
-        vec3(1.0, 0.0, 0.0),        //0 is for bg
-        vec3(0.0, 1.0, 0.0),
-        vec3(0.0, 0.0, 1.0),
-        vec3(1.0, 1.0, 0.0),
-        vec3(1.0, 0.0, 1.0),
-        vec3(0.0, 1.0, 1.0),
+        vec3(1.0, 0.4, 0.4),        //0 is for bg
+        vec3(0.8, 0.4, 0.0),
+        vec3(0.4, 0.4, 1.0),
+        vec3(1.0, 1.0, 0.4),
+        vec3(1.0, 0.4, 1.0),
+        vec3(1.0, 0.4, 0.7),
 };
 
-static vec3 grid_color = vec3(0.2, 0.2, 0.2);
+static vec3 grid_color = vec3(0.5, 0.5, 0.5);
 
 //three triangles
 const int NumPoints = 1200;
@@ -44,8 +44,10 @@ int row = 20, col = 10;
 int canvas[20][10] = {0};
 int image[20][10] = {0};
 int xoff, yoff;
-array<array<int, 4>, 4> falling;
-vector<array<array < int, 4>, 4>> tilab;
+bool is_O = false;
+int const tilnum = 5;
+array<array<int, tilnum>, tilnum> falling;
+vector<array<array < int, tilnum>, tilnum>> tilab;
 
 //----------------------------------------------------------------------------
 void draw_image(void);
@@ -94,7 +96,7 @@ init(void) {
     //Draw the grids.
     int i = 0;
     for (; i < 21; i++) {
-        points1[2 * i] = vec2(-1, (i - 10) * 0.1);
+        points1[2 * i] = vec2(-1.0, (i - 10) * 0.1);
         points1[2 * i + 1] = vec2(1, (i - 10) * 0.1);
         colors1[2 * i] = colors1[2 * i + 1] = grid_color;
     }
@@ -216,8 +218,8 @@ void draw_image(void) {
         for (int j = 0; j < 10; j++)
             image[i][j] = canvas[i][j];
 
-    for (int i = 0; i < 4; i++)
-        for (int j = 0; j < 4; j++)
+    for (int i = 0; i < tilnum; i++)
+        for (int j = 0; j < tilnum; j++)
         	if (i + yoff - 1 >= 0)
             	image[i + yoff - 1][j + xoff - 1] += falling[i][j];
 
@@ -238,8 +240,8 @@ void draw_image(void) {
 }
 
 bool isCollision(int x, int y) {
-    for (int i = 0; i < 4; i++) {
-        for (int j = 0; j < 4; j++) {
+    for (int i = 0; i < tilnum; i++) {
+        for (int j = 0; j < tilnum; j++) {
             if (falling[i][j] > 0) {
                 if (i + y > 20 || j + x < 1 || j + x > 10)
                     return true;
@@ -253,34 +255,34 @@ bool isCollision(int x, int y) {
 }
 
 void init_tilab() {
-    array<array<int, 4>, 4> tiles_O{};
-    array<array<int, 4>, 4> tiles_I{};
-    array<array<int, 4>, 4> tiles_S{};
-    array<array<int, 4>, 4> tiles_Z{};
-    array<array<int, 4>, 4> tiles_L{};
-    array<array<int, 4>, 4> tiles_J{};
-    array<array<int, 4>, 4> tiles_T{};
+    array<array<int, tilnum>, tilnum> tiles_O{};
+    array<array<int, tilnum>, tilnum> tiles_I{};
+    array<array<int, tilnum>, tilnum> tiles_S{};
+    array<array<int, tilnum>, tilnum> tiles_Z{};
+    array<array<int, tilnum>, tilnum> tiles_L{};
+    array<array<int, tilnum>, tilnum> tiles_J{};
+    array<array<int, tilnum>, tilnum> tiles_T{};
 
     // construct tiles_O
-    tiles_O[1][1] = tiles_O[1][2] = tiles_O[2][1] = tiles_O[2][2] = 1;
+    tiles_O[2][1] = tiles_O[2][2] = tiles_O[3][1] = tiles_O[3][2] = 1;
 
     // construct tiles_I
-    tiles_I[1][0] = tiles_I[1][1] = tiles_I[1][2] = tiles_I[1][3] = 1;
+    tiles_I[2][0] = tiles_I[2][1] = tiles_I[2][2] = tiles_I[2][3] = 1;
 
     // construct tiles_S
-    tiles_S[1][2] = tiles_S[1][3] = tiles_S[2][1] = tiles_S[2][2] = 1;
+    tiles_S[2][2] = tiles_S[2][3] = tiles_S[3][1] = tiles_S[3][2] = 1;
 
     // construct tiles_Z
-    tiles_Z[1][1] = tiles_Z[1][2] = tiles_Z[2][2] = tiles_Z[2][3] = 1;
+    tiles_Z[2][1] = tiles_Z[2][2] = tiles_Z[3][2] = tiles_Z[3][3] = 1;
 
     // construct tiles_L
-    tiles_L[1][1] = tiles_L[1][2] = tiles_L[1][3] = tiles_L[2][1] = 1;
+    tiles_L[2][1] = tiles_L[2][2] = tiles_L[2][3] = tiles_L[3][1] = 1;
 
     // construct tiles_J
-    tiles_J[1][1] = tiles_J[1][2] = tiles_J[1][3] = tiles_J[2][3] = 1;
+    tiles_J[2][1] = tiles_J[2][2] = tiles_J[2][3] = tiles_J[3][3] = 1;
 
     // construct tiles_T
-    tiles_T[1][1] = tiles_T[1][2] = tiles_T[1][3] = tiles_T[2][2] = 1;
+    tiles_T[2][1] = tiles_T[2][2] = tiles_T[2][3] = tiles_T[3][2] = 1;
 
     tilab.push_back(tiles_O);
     tilab.push_back(tiles_I);
@@ -293,12 +295,18 @@ void init_tilab() {
 
 void init_falling() {
     yoff = -2;
-    xoff = rand() % 7 + 1;
-    falling = tilab[xoff - 1];
+    xoff = rand() % 6 + 1;
+    int rtil = rand() % 7;
+    falling = tilab[rtil];
+
+    if(rtil == 0)
+    	is_O = true;
+    else
+    	is_O = false;
 
     int color = rand() % 6 + 1;
-    for (int i = 0; i < 4; i++)
-        for (int j = 0; j < 4; j++)
+    for (int i = 0; i < tilnum; i++)
+        for (int j = 0; j < tilnum; j++)
             if (falling[i][j] == 1)
                 falling[i][j] = color;
 
@@ -313,18 +321,24 @@ void init_falling() {
 }
 
 void rotate() {
-    for (int i = 0; i < 4; i++)
-        for (int j = i; j < 4; j++)
+	if (is_O)
+		return;
+
+    for (int i = 0; i < tilnum; i++)
+        for (int j = i; j < tilnum; j++)
             swap(falling[i][j], falling[j][i]);
 
     reverse(falling.begin(), falling.end());
 }
 
 void reverse_rotate() {
+	if (is_O)
+		return;
+
     reverse(falling.begin(), falling.end());
 
-    for (int i = 0; i < 4; i++)
-        for (int j = i; j < 4; j++)
+    for (int i = 0; i < tilnum; i++)
+        for (int j = i; j < tilnum; j++)
             swap(falling[i][j], falling[j][i]);
 }
 
@@ -355,8 +369,8 @@ void move_down() {
         yoff++;
         draw_image();
     } else {
-        for (int i = 0; i < 4; i++)
-            for (int j = 0; j < 4; j++)
+        for (int i = 0; i < tilnum; i++)
+            for (int j = 0; j < tilnum; j++)
             	if (i + yoff - 1 >= 0)
                 	canvas[i + yoff - 1][j + xoff - 1] += falling[i][j];
                 else if (falling[i][j] > 0)
