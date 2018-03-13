@@ -1,5 +1,8 @@
 
 #include "Angel.h"
+#include "math.h"
+
+#define PI 3.14159265
 
 typedef Angel::vec4 point4;
 typedef Angel::vec4 color4;
@@ -28,7 +31,7 @@ color4 vertex_colors[8] = {
     color4( 0.0, 1.0, 0.0, 1.0 ),  // green
     color4( 0.0, 0.0, 1.0, 1.0 ),  // blue
     color4( 1.0, 0.0, 1.0, 1.0 ),  // magenta
-    color4( 1.0, 1.0, 1.0, 1.0 ),  // white
+    color4( 1.0, 0.5, 0.5, 1.0 ),  // whatever
     color4( 0.0, 1.0, 1.0, 1.0 )   // cyan
 };
 
@@ -49,10 +52,14 @@ GLuint ModelView, Projection;
 enum { Base = 0, LowerArm = 1, UpperArm = 2, NumAngles = 3 };
 int      Axis = Base;
 GLfloat  Theta[NumAngles] = { 0.0 };
-
-// Menu option values
-const int  Quit = 4;
-
+bool     topv = false;              //side view
+double   db, dl, du;
+double   dgrB, dgrL, dgrU;
+const int   grn = 1;                   //precision
+const double   tgrn = 10.0;
+int      stage;
+bool     isStick = false;
+double      ox, oy, oz, nx, ny, nz, r;
 
 //----------------------------------------------------------------------------
 
@@ -78,6 +85,92 @@ colorcube()
     quad( 6, 5, 1, 2 );
     quad( 4, 5, 6, 7 );
     quad( 5, 4, 0, 1 );
+}
+
+//----------------------------------------------------------------------------
+/* Define the animation function*/
+double calDgr(double a, double b, double c){
+    double d = (a*a + b*b - c*c)/(2*a*b);
+
+    return (acos(d) * 180.0 / PI);
+}
+
+void updateBLU(double x, double y, double z, double r){
+    double a, b, c;
+    db = dl = du = 0;
+
+    a = sqrt(x*x + z*z);
+    b = 1;
+    c = sqrt((x-1)*(x-1) + z*z);
+    dgrB = calDgr(a,b,c);
+    if (z > 0) 
+        dgrB = 360 - dgrB;
+
+    a = LOWER_ARM_HEIGHT;
+    b = sqrt(x*x + (y-BASE_HEIGHT)*(y-BASE_HEIGHT) + z*z);
+    c = UPPER_ARM_HEIGHT + r;
+    dgrL = calDgr(a,c,b);
+
+    dgrU = 180 - calDgr(a,c,b);
+}
+
+void rotate (int){
+    bool forward = (db + grn <= dgrB) || (dl + grn <= dgrL) || (du + grn <= dgrU);
+    bool backward = (db - grn >= 0) || (dl - grn >= 0) || (du - grn >= 0);
+    if (stage%2 == 0 && forward){
+        if (db + grn <= dgrB){
+            db += grn;
+            Theta[Base] = db;    
+        }
+        if (dl + grn <= dgrL){
+            dl += grn;
+            Theta[LowerArm] = 360 - dl;
+        }
+        if (du + grn <= dgrU){
+            du += grn;
+            Theta[UpperArm] = 360 - du;
+        }
+        glutPostRedisplay();
+        glutTimerFunc(tgrn, rotate, 0);
+    }
+    else if (stage%2 == 1 && backward){
+        if (db - grn >= 0){
+            db -= grn;
+            Theta[Base] = db;
+        }
+        if (dl - grn >= 0){
+            dl -= grn;
+            Theta[LowerArm] = 360 - dl;
+        }
+        if (du - grn >= 0){
+            du -= grn;
+            Theta[UpperArm] = 360 - du;
+        }
+        glutPostRedisplay();
+        glutTimerFunc(tgrn, rotate, 0);
+    }
+    else if (++stage < 2){
+        isStick = !isStick;
+        printf("isStick is %d\n", isStick);
+        glutTimerFunc(tgrn, rotate, 0);
+    }
+    else if (stage == 2){
+        printf("continue rotation\n");
+        updateBLU(nx, ny, nz, r);
+        glutTimerFunc(tgrn, rotate, 0);
+    }
+    else if (stage == 3){
+        isStick = !isStick;
+        printf("isStick is %d\n", isStick);
+        glutTimerFunc(tgrn, rotate, 0);        
+    }
+    else
+        stage = 0;
+}
+
+void animate(){
+    updateBLU(ox, oy, oz, r);
+    glutTimerFunc(tgrn, rotate, 0);
 }
 
 //----------------------------------------------------------------------------
@@ -136,8 +229,14 @@ display( void )
 {
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
+    model_view = mat4( 1.0 );       // An Identity matrix
+
+    if (topv){              // top view
+        model_view *= (Translate(0, 5, 0) * RotateX(90));
+    }
+
     // Accumulate ModelView Matrix as we traverse the tree
-    model_view = RotateY(Theta[Base] );
+    model_view *= RotateY(Theta[Base]);
     base();
 
     model_view *= ( Translate(0.0, BASE_HEIGHT, 0.0) *
@@ -198,41 +297,6 @@ init( void )
 //----------------------------------------------------------------------------
 
 void
-mouse( int button, int state, int x, int y )
-{
-
-    if ( button == GLUT_LEFT_BUTTON && state == GLUT_DOWN ) {
-	// Incrase the joint angle
-	Theta[Axis] += 5.0;
-	if ( Theta[Axis] > 360.0 ) { Theta[Axis] -= 360.0; }
-    }
-
-    if ( button == GLUT_RIGHT_BUTTON && state == GLUT_DOWN ) {
-	// Decrase the joint angle
-	Theta[Axis] -= 5.0;
-	if ( Theta[Axis] < 0.0 ) { Theta[Axis] += 360.0; }
-    }
-
-    glutPostRedisplay();
-}
-
-//----------------------------------------------------------------------------
-
-void
-menu( int option )
-{
-    if ( option == Quit ) {
-	exit( EXIT_SUCCESS );
-    }
-    else {
-        printf("%i\n",option);
-	Axis = option;
-    }
-}
-
-//----------------------------------------------------------------------------
-
-void
 reshape( int width, int height )
 {
     glViewport( 0, 0, width, height );
@@ -268,6 +332,42 @@ keyboard( unsigned char key, int x, int y )
 	case 'q': case 'Q':
 	    exit( EXIT_SUCCESS );
 	    break;
+	case 'a':
+		Theta[Axis] += 5.0;
+		if ( Theta[Axis] > 360.0 ) { Theta[Axis] -= 360.0; }
+		glutPostRedisplay();
+		break;
+	case 'd':
+		Theta[Axis] -= 5.0;
+		if ( Theta[Axis] < 0.0 ) { Theta[Axis] += 360.0; }
+		glutPostRedisplay();
+		break;
+	case '1':
+		Axis = 0; 
+		printf("set to base\n");		// set to base
+		break;
+	case '2':
+		Axis = 1; 
+		printf("set to lower arm\n");	// set to lower arm
+		break;
+	case '3':
+		Axis = 2; 
+		printf("set to upper arm\n");	// set to upper arm
+		break;
+    case 't':
+        topv = true;
+        printf("change to top view\n");
+        glutPostRedisplay();
+        break;
+    case 's':
+        topv = false;
+        printf("change to side view\n");
+        glutPostRedisplay();
+        break;
+    case 'r':
+        printf("start rotation\n");
+        animate();
+        break;
     }
 }
 
@@ -276,6 +376,10 @@ keyboard( unsigned char key, int x, int y )
 int
 main( int argc, char **argv )
 {
+    ox = 0; oy = -2; oz = -5;
+    nx = 0; ny = 2; nz = 5;
+    r = 1;
+
     glutInit( &argc, argv );
     glutInitDisplayMode( GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH );
     glutInitWindowSize( 512, 512 );
@@ -292,16 +396,6 @@ main( int argc, char **argv )
     glutDisplayFunc( display );
     glutReshapeFunc( reshape );
     glutKeyboardFunc( keyboard );
-    glutMouseFunc( mouse );
-
-    glutCreateMenu( menu );
-    // Set the menu values to the relevant rotation axis values (or Quit)
-    glutAddMenuEntry( "base", Base );
-    glutAddMenuEntry( "lower arm", LowerArm );
-    glutAddMenuEntry( "upper arm", UpperArm );
-    glutAddMenuEntry( "quit", Quit );
-    glutAttachMenu( GLUT_MIDDLE_BUTTON );
-
 
     glutMainLoop();
     return 0;
