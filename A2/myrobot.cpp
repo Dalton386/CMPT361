@@ -1,6 +1,10 @@
 
 #include "Angel.h"
 #include "math.h"
+#include "stdlib.h"
+#include <iostream>
+#include <string>
+using namespace std;
 
 #define PI 3.14159265
 
@@ -8,9 +12,17 @@ typedef Angel::vec4 point4;
 typedef Angel::vec4 color4;
 
 const int NumVertices = 36; //(6 faces)(2 triangles/face)(3 vertices/triangle)
+const int NumPoints1 = 40;  // the sphere
+const int NumPoints2 = 342;
 
 point4 points[NumVertices];
 color4 colors[NumVertices];
+
+point4 points1[NumPoints1];
+color4 colors1[NumPoints1];
+
+point4 points2[NumPoints2];
+color4 colors2[NumPoints2];
 
 point4 vertices[8] = {
     point4( -0.5, -0.5,  0.5, 1.0 ),
@@ -46,12 +58,14 @@ const GLfloat UPPER_ARM_WIDTH  = 0.5;
 
 // Shader transformation matrices
 mat4  model_view;
+mat4  fix_view, view;
 GLuint ModelView, Projection;
 
 // Array of rotation angles (in degrees) for each rotation axis
 enum { Base = 0, LowerArm = 1, UpperArm = 2, NumAngles = 3 };
 int      Axis = Base;
 GLfloat  Theta[NumAngles] = { 0.0 };
+GLuint      vao, vao1, vao2;
 bool     topv = false;              //side view
 double   db, dl, du;
 double   dgrB, dgrL, dgrU;
@@ -59,7 +73,8 @@ const int   grn = 1;                   //precision
 const double   tgrn = 10.0;
 int      stage;
 bool     isStick = false;
-double      ox, oy, oz, nx, ny, nz, r;
+double      ox, oy, oz, nx, ny, nz;
+double r = UPPER_ARM_WIDTH / 2;
 
 //----------------------------------------------------------------------------
 
@@ -107,11 +122,17 @@ void updateBLU(double x, double y, double z, double r){
         dgrB = 360 - dgrB;
 
     a = LOWER_ARM_HEIGHT;
-    b = sqrt(x*x + (y-BASE_HEIGHT)*(y-BASE_HEIGHT) + z*z);
-    c = UPPER_ARM_HEIGHT + r;
-    dgrL = calDgr(a,c,b);
+    b = UPPER_ARM_HEIGHT + r;
+    c = sqrt(x*x + (y-BASE_HEIGHT)*(y-BASE_HEIGHT) + z*z);
+    dgrU = 180 - calDgr(a,b,c);
 
-    dgrU = 180 - calDgr(a,c,b);
+    double tmp = calDgr(a,c,b);
+    a = BASE_HEIGHT;
+    b = c;
+    c = sqrt(x*x + y*y + z*z);
+    dgrL = 180 - tmp - calDgr(a,b,c);
+
+    printf("B is %f, L is %f, U is %f\n", dgrB, dgrL, dgrU);
 }
 
 void rotate (int){
@@ -189,7 +210,7 @@ base()
 			BASE_HEIGHT,
 			BASE_WIDTH ) );
 
-    glUniformMatrix4fv( ModelView, 1, GL_TRUE, model_view * instance );
+    glUniformMatrix4fv( ModelView, 1, GL_TRUE, view * model_view * instance );
 
     glDrawArrays( GL_TRIANGLES, 0, NumVertices );
 }
@@ -204,7 +225,7 @@ upper_arm()
 			     UPPER_ARM_HEIGHT,
 			     UPPER_ARM_WIDTH ) );
     
-    glUniformMatrix4fv( ModelView, 1, GL_TRUE, model_view * instance );
+    glUniformMatrix4fv( ModelView, 1, GL_TRUE, view * model_view * instance );
     glDrawArrays( GL_TRIANGLES, 0, NumVertices );
 }
 
@@ -218,8 +239,30 @@ lower_arm()
 			     LOWER_ARM_HEIGHT,
 			     LOWER_ARM_WIDTH ) );
     
-    glUniformMatrix4fv( ModelView, 1, GL_TRUE, model_view * instance );
+    glUniformMatrix4fv( ModelView, 1, GL_TRUE, view * model_view * instance );
     glDrawArrays( GL_TRIANGLES, 0, NumVertices );
+}
+
+//----------------------------------------------------------------------------
+
+void sphere(){
+    mat4 instance = Scale(r, r, r);
+
+    if (isStick)
+        fix_view = model_view;
+
+    glUniformMatrix4fv( ModelView, 1, GL_TRUE, view * fix_view * instance );
+    glDrawArrays( GL_TRIANGLE_STRIP, 0, NumPoints2 );
+}
+
+void sphere_strip(){
+    mat4 instance = Scale(r, r, r);
+
+    if (isStick)
+        fix_view = model_view;
+
+    glUniformMatrix4fv( ModelView, 1, GL_TRUE, view * fix_view * instance );
+    glDrawArrays( GL_TRIANGLE_FAN, 0, NumPoints1 );
 }
 
 //----------------------------------------------------------------------------
@@ -230,10 +273,14 @@ display( void )
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
     model_view = mat4( 1.0 );       // An Identity matrix
+    view = mat4(1.0);
+    if (topv)
+        view *= (Translate(0, 5, -3) * RotateX(90));
 
-    if (topv){              // top view
-        model_view *= (Translate(0, 5, 0) * RotateX(90));
-    }
+    //---------------------------------------
+    // draw the robot
+    glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
+    glBindVertexArray(vao);
 
     // Accumulate ModelView Matrix as we traverse the tree
     model_view *= RotateY(Theta[Base]);
@@ -247,10 +294,65 @@ display( void )
 		    RotateZ(Theta[UpperArm]) );
     upper_arm();
 
+    // draw the sphere
+    glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
+    model_view *= Translate(0.0, UPPER_ARM_HEIGHT + r, 0.0);
+    glBindVertexArray(vao1);
+    sphere_strip();
+    glBindVertexArray(vao2);
+    sphere();
+
     glutSwapBuffers();
 }
 
 //----------------------------------------------------------------------------
+void initSphere(){
+    const float DegreeToRadians = PI / 180.0;
+
+    for (int i = 0; i < NumPoints1; i++)
+        colors1[i] = vertex_colors[7];
+
+    for (int i = 0; i < NumPoints2; i++)
+        colors2[i] = vertex_colors[7];
+
+    int k = 0;
+    points1[k] = point4(0, 0, 1, 1);
+    k++;
+
+    float sin80 = sin(80*DegreeToRadians);
+    float cos80 = cos(80*DegreeToRadians);
+
+    for (float theta = -180; theta <= 180; theta += 20){
+        float thetar = theta*DegreeToRadians;
+        points1[k] = point4(sin(thetar)*cos80, cos(thetar)*cos80, sin80, 1);
+        k++;
+    }
+
+    points1[k] = point4(0, 0, -1, 1);
+    k++;
+
+    for (float theta = -180; theta <= 180; theta += 20){
+        float thetar = theta;
+        points1[k] = point4(sin(thetar)*cos80, cos(thetar)*cos80, sin80, 1);
+        k++;
+    }
+
+    //*********************************************
+    k = 0;
+    for (float phi = -80; phi <= 80; phi += 20){
+        float phir = phi*DegreeToRadians;
+        float phir20 = (phi+20)*DegreeToRadians;
+
+        for (float theta = -180; theta <= 180; theta += 20){
+            float thetar = theta*DegreeToRadians;
+            points2[k] = point4(sin(thetar)*cos(phir), cos(thetar)*cos(phir), sin(phir), 1);
+            k++;
+            points2[k] = point4(sin(thetar)*cos(phir20), cos(thetar)*cos(phir20), sin(phir20), 1);
+            k++;
+        }
+    }
+}
+
 
 void
 init( void )
@@ -258,7 +360,6 @@ init( void )
     colorcube();
     
     // Create a vertex array object
-    GLuint vao;
     glGenVertexArrays( 1, &vao );
     glBindVertexArray( vao );
 
@@ -285,11 +386,69 @@ init( void )
     glVertexAttribPointer( vColor, 4, GL_FLOAT, GL_FALSE, 0,
 			   BUFFER_OFFSET(sizeof(points)) );
 
+    //---------------------------------------------------
+    initSphere();
+
+    // Create buffer for sphere strip
+    glGenVertexArrays(1, &vao1);
+    glBindVertexArray(vao1);
+
+    // Create and initialize a buffer object
+    GLuint buffer1;
+    glGenBuffers(1, &buffer1);
+    glBindBuffer(GL_ARRAY_BUFFER, buffer1);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(points1) + sizeof(colors1), NULL, GL_DYNAMIC_DRAW);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(points1), points1);
+    glBufferSubData(GL_ARRAY_BUFFER, sizeof(points1), sizeof(colors1), colors1);
+
+    // Load shaders and use the resulting shader program
+    GLuint program1 = InitShader("vshader81.glsl", "fshader81.glsl");
+    glUseProgram(program1);
+
+    // Initialize the vertex position attribute from the vertex shader
+    GLuint vPosition1 = glGetAttribLocation(program1, "vPosition");
+    glEnableVertexAttribArray(vPosition1);
+    glVertexAttribPointer(vPosition1, 4, GL_FLOAT, GL_FALSE, 0,
+                          BUFFER_OFFSET(0));
+
+    GLuint vColor1 = glGetAttribLocation(program1, "vColor");
+    glEnableVertexAttribArray(vColor1);
+    glVertexAttribPointer(vColor1, 4, GL_FLOAT, GL_FALSE, 0,
+                          BUFFER_OFFSET(sizeof(points1)));
+    //**********************************************
+    // draw main sphere
+    // Create buffer for sphere
+    glGenVertexArrays(1, &vao2);
+    glBindVertexArray(vao2);
+
+    // Create and initialize a buffer object
+    GLuint buffer2;
+    glGenBuffers(1, &buffer2);
+    glBindBuffer(GL_ARRAY_BUFFER, buffer2);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(points2) + sizeof(colors2), NULL, GL_DYNAMIC_DRAW);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(points2), points2);
+    glBufferSubData(GL_ARRAY_BUFFER, sizeof(points2), sizeof(colors2), colors2);
+
+    // Load shaders and use the resulting shader program
+    GLuint program2 = InitShader("vshader81.glsl", "fshader81.glsl");
+    glUseProgram(program2);
+
+    // Initialize the vertex position attribute from the vertex shader
+    GLuint vPosition2 = glGetAttribLocation(program2, "vPosition");
+    glEnableVertexAttribArray(vPosition2);
+    glVertexAttribPointer(vPosition2, 4, GL_FLOAT, GL_FALSE, 0,
+                          BUFFER_OFFSET(0));
+
+    GLuint vColor2 = glGetAttribLocation(program2, "vColor");
+    glEnableVertexAttribArray(vColor2);
+    glVertexAttribPointer(vColor2, 4, GL_FLOAT, GL_FALSE, 0,
+                          BUFFER_OFFSET(sizeof(points2)));
+
+    //**********************************************
     ModelView = glGetUniformLocation( program, "ModelView" );
     Projection = glGetUniformLocation( program, "Projection" );
 
     glEnable( GL_DEPTH );
-    glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
 
     glClearColor( 1.0, 1.0, 1.0, 1.0 ); 
 }
@@ -364,10 +523,6 @@ keyboard( unsigned char key, int x, int y )
         printf("change to side view\n");
         glutPostRedisplay();
         break;
-    case 'r':
-        printf("start rotation\n");
-        animate();
-        break;
     }
 }
 
@@ -376,9 +531,20 @@ keyboard( unsigned char key, int x, int y )
 int
 main( int argc, char **argv )
 {
-    ox = 0; oy = -2; oz = -5;
-    nx = 0; ny = 2; nz = 5;
-    r = 1;
+    //./myrobot 0 0 5 5 2 5 -tv
+    string tsv;
+    ox = atof(argv[1]); oy = atof(argv[2]); oz = atof(argv[3]);
+    nx = atof(argv[4]); ny = atof(argv[5]); nz = atof(argv[6]);
+    tsv = string(argv[7]);
+
+    if (tsv == "-tv")
+        topv = true;
+    else if (tsv == "-sv")
+        topv = false;
+
+    cout << ox << oy << oz << nx << ny << nz << tsv << endl;
+
+    fix_view = Translate(ox, oy, oz);
 
     glutInit( &argc, argv );
     glutInitDisplayMode( GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH );
@@ -396,6 +562,9 @@ main( int argc, char **argv )
     glutDisplayFunc( display );
     glutReshapeFunc( reshape );
     glutKeyboardFunc( keyboard );
+
+    printf("start rotation\n");
+    animate();
 
     glutMainLoop();
     return 0;
