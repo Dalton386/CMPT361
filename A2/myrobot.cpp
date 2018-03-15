@@ -275,7 +275,7 @@ display( void )
     model_view = mat4( 1.0 );       // An Identity matrix
     view = mat4(1.0);
     if (topv)
-        view *= (Translate(0, 5, -3) * RotateX(90));
+        view *= (Translate(0, 5, 0) * RotateX(90));
 
     //---------------------------------------
     // draw the robot
@@ -462,7 +462,7 @@ reshape( int width, int height )
 
     GLfloat  left = -10.0, right = 10.0;
     GLfloat  bottom = -5.0, top = 15.0;
-    GLfloat  zNear = -10.0, zFar = 10.0;
+    GLfloat  zNear = -20.0, zFar = 20.0;
 
     GLfloat aspect = GLfloat(width)/height;
 
