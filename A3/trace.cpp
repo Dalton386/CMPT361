@@ -3,6 +3,8 @@
 #include <math.h>
 #include "global.h"
 #include "sphere.h"
+#include <algorithm>
+using namespace std;
 
 //
 // Global variables
@@ -44,11 +46,54 @@ extern int step_max;
 /*********************************************************************
  * Phong illumination - you need to implement this!
  *********************************************************************/
-RGB_float phong(Point q, Vector v, Vector surf_norm, Spheres *sph) {
+RGB_float phong(Point q, Spheres *sph) {
 //
 // do your thing here
 //
 	RGB_float color;
+
+  Vector n = sphere_normal(q, sph);
+  Vector v = get_vec(q, eye_pos);
+  normalize(&v);
+  Vector l = get_vec(q, light1);
+  normalize(&l);
+  Vector r = vec_minus(vec_scale(n, 2*vec_dot(n, l)), l);
+  normalize(&r);
+
+  RGB_float amb;
+  amb.r = sph->mat_ambient[0] * (global_ambient[0] + light1_ambient[0]);
+  amb.g = sph->mat_ambient[1] * (global_ambient[1] + light1_ambient[1]);
+  amb.b = sph->mat_ambient[2] * (global_ambient[2] + light1_ambient[2]);
+  // clr_norm(&amb);
+
+  float dist = vec_len(get_vec(q, light1));
+  float fatt = min(float(1.0), 1 / (decay_a + decay_b*dist + decay_c*dist*dist));
+
+  RGB_float dif;
+  dif.r = sph->mat_diffuse[0] * light1_diffuse[0];
+  dif.g = sph->mat_diffuse[1] * light1_diffuse[1];
+  dif.b = sph->mat_diffuse[2] * light1_diffuse[2];
+  dif = clr_scale(dif, fatt*vec_dot(n, l));
+  // clr_norm(&dif);
+
+  RGB_float spc;
+  spc.r = sph->mat_specular[0] * light1_specular[0];
+  spc.g = sph->mat_specular[1] * light1_specular[1];
+  spc.b = sph->mat_specular[2] * light1_specular[2];
+  spc = clr_scale(spc, fatt*pow(vec_dot(r, v), sph->mat_shineness));
+  // clr_norm(&spc);
+
+  if (vec_dot(n, l) <= 0){
+    color = amb;
+  }
+  else if (vec_dot(r,v) <= 0){
+    color = clr_add(amb, dif);
+  }
+  else
+    color = clr_add(amb, clr_add(dif, spc));
+
+  // clr_norm(&color);
+
 	return color;
 }
 
@@ -56,11 +101,20 @@ RGB_float phong(Point q, Vector v, Vector surf_norm, Spheres *sph) {
  * This is the recursive ray tracer - you need to implement this!
  * You should decide what arguments to use.
  ************************************************************************/
-RGB_float recursive_ray_trace() {
+RGB_float recursive_ray_trace(Vector ray) {
 //
 // do your thing here
 //
 	RGB_float color;
+  Point hit;
+  hit.x = hit.y = hit.z = -1;
+  Spheres *hitsph = intersect_scene(eye_pos, ray, scene, hit);
+
+  if (hitsph == NULL) 
+    return background_clr;
+
+  color = phong(hit, hitsph);
+
 	return color;
 }
 
@@ -94,8 +148,8 @@ void ray_trace() {
       //
       // You need to change this!!!
       //
-      // ret_color = recursive_ray_trace();
-      ret_color = background_clr; // just background for now
+      ret_color = recursive_ray_trace(ray);
+      // ret_color = background_clr; // just background for now
 
       // Parallel rays can be cast instead using below
       //
@@ -103,9 +157,9 @@ void ray_trace() {
       // ray.z = -1.0;
       // ret_color = recursive_ray_trace(cur_pixel_pos, ray, 1);
 
-// Checkboard for testing
-RGB_float clr = {float(i/32), 0, float(j/32)};
-ret_color = clr;
+      // Checkboard for testing
+      // RGB_float clr = {float(i/32), 0, float(j/32)};
+      // ret_color = clr;
 
       frame[i][j][0] = GLfloat(ret_color.r);
       frame[i][j][1] = GLfloat(ret_color.g);

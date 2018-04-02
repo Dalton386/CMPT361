@@ -3,7 +3,8 @@
  **************************************************************/
 #include "vector.h"
 #include <math.h>
-
+#include <algorithm>
+using namespace std;
 //
 // return length of a vector
 //
@@ -112,4 +113,15 @@ RGB_float clr_scale(RGB_float p, float s) {
   ret.b = s * p.b;
 
   return ret;
+}
+
+void clr_norm(RGB_float *clr){
+  float lar = max(max(clr->r, clr->g), clr->b);
+
+  if (lar > 1){
+    clr->r /= lar;
+    clr->g /= lar;
+    clr->b /= lar;
+  }
+
 }
