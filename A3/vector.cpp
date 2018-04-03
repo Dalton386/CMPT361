@@ -115,13 +115,15 @@ RGB_float clr_scale(RGB_float p, float s) {
   return ret;
 }
 
-void clr_norm(RGB_float *clr){
-  float lar = max(max(clr->r, clr->g), clr->b);
+RGB_float clr_norm(RGB_float *clr){
+  float max_val;
 
-  if (lar > 1){
-    clr->r /= lar;
-    clr->g /= lar;
-    clr->b /= lar;
+  max_val = max(clr->r, max(clr->g, clr->b));
+
+  if (max_val > 1){
+    clr->r /= max_val;
+    clr->g /= max_val;
+    clr->b /= max_val;
   }
-
+  
 }

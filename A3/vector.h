@@ -29,4 +29,4 @@ void normalize(Vector *);
 Vector vec_scale(Vector, float);
 RGB_float clr_add(RGB_float, RGB_float);
 RGB_float clr_scale(RGB_float, float);
-void clr_norm(RGB_float *);
+RGB_float clr_norm(RGB_float *);

@@ -104,4 +104,5 @@ void histogram_normalization() {
       frame[i][j][1] /= max_val;
       frame[i][j][2] /= max_val;
     }
+
 }

@@ -79,6 +79,12 @@ int step_max = 1;
 // You can put your flags here
 // a flag to indicate whether you want to have shadows
 int shadow_on = 0;
+int reflec_on = 0;
+int refrac_on = 0;
+int chessb_on = 0;
+int stocha_on = 0;
+int supers_on = 0;
+float transparency = 0.5;
 
 
 // OpenGL
@@ -222,7 +228,35 @@ int main( int argc, char **argv )
 	// Optional arguments
 	for(int i = 3; i < argc; i++)
 	{
-		if (strcmp(argv[i], "-s") == 0)	shadow_on = 1;
+		if (strcmp(argv[i], "+s") == 0)	{
+			shadow_on = 1;
+		}
+		else if (strcmp(argv[i], "+l") == 0)	{
+			reflec_on = 1;
+		}
+		else if (strcmp(argv[i], "+r") == 0)	{
+			refrac_on = 1;
+		}
+		else if (strcmp(argv[i], "+c") == 0)	{
+			chessb_on = 1;
+			
+			Point chessb_ctr = {-4, -2, -6};
+			float chessb_rad = 1;
+			float chessb_ambient[] = {1, 1, 1};
+			float chessb_diffuse[] = {1, 1, 1};
+			float chessb_specular[] = {1, 1, 1};
+			float chessb_shineness = 6;
+			float chessb_reflectance = 0.3;
+			scene = add_sphere(scene, chessb_ctr, chessb_rad, chessb_ambient,
+			         chessb_diffuse, chessb_specular, chessb_shineness,
+				     chessb_reflectance, -1);
+		}
+		else if (strcmp(argv[i], "+f") == 0)	{
+			stocha_on = 1;
+		}
+		else if (strcmp(argv[i], "+p") == 0)	{
+			supers_on = 1;
+		}
 	}
 
 	//

@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <iostream>
-#define INF 10e10
+#define INF 1e10
 using namespace std;
 
 /**********************************************************************
@@ -15,24 +15,62 @@ using namespace std;
  * If there is an intersection, the point of intersection should be
  * stored in the "hit" variable
  **********************************************************************/
-float intersect_sphere(Point o, Vector v, Spheres *sph, Point &check) {
+void change_color(Spheres *sph, int opt){
+  if (opt == 0) {
+    sph->mat_ambient[0] = sph->mat_ambient[1] = sph->mat_ambient[2] = 0.5;
+    sph->mat_diffuse[0] = sph->mat_diffuse[1] = sph->mat_diffuse[2] = 0.5;
+    sph->mat_specular[0] = sph->mat_specular[1] = sph->mat_specular[2] = 0.5;
+  }
+  else {
+    sph->mat_ambient[0] = sph->mat_ambient[1] = sph->mat_ambient[2] = 1;
+    sph->mat_diffuse[0] = sph->mat_diffuse[1] = sph->mat_diffuse[2] = 1;
+    sph->mat_specular[0] = sph->mat_specular[1] = sph->mat_specular[2] = 1;
+  }
+
+}
+
+
+float intersect_sphere(Point o, Vector v, Spheres *sph, Point *check) {
   Point ctr = sph->center;
   float r = sph->radius;
-  Vector m = get_vec(ctr, o);
+  float k;
 
-  float a = v.x*v.x + v.y*v.y + v.z*v.z;
-  float b = 2 * (v.x*m.x + v.y*m.y + v.z*m.z);
-  float c = m.x*m.x + m.y*m.y + m.z*m.z - r*r;
-  float delta = b*b - 4*a*c;
+  if (sph->index > 0){
+    Vector m = get_vec(ctr, o);
 
-  if (delta < 0)
-    return -1;
+    float a = v.x*v.x + v.y*v.y + v.z*v.z;
+    float b = 2 * (v.x*m.x + v.y*m.y + v.z*m.z);
+    float c = m.x*m.x + m.y*m.y + m.z*m.z - r*r;
+    float delta = b*b - 4*a*c;
+    if (delta < 0)
+      return -1;
 
-  float k = (-b - sqrt(delta))/(2*a);
+    k = (-b - sqrt(delta))/(2*a);
+  }
+  else {
+    float depth = ctr.y;
+    k = (depth - o.y) / v.y;
+    float nx = (o.x + k * v.x - ctr.x) / r;
+    float nz = (o.z + k * v.z - ctr.z) / r;
 
-  check.x = o.x + k * v.x;
-  check.y = o.y + k * v.y;
-  check.z = o.z + k * v.z;
+    Vector norm = {0, 1, 0};
+    if (vec_dot(norm, v) >= 0)
+      return -1;
+
+    if (nx <= 8 && nx >= 0 && nz <= 8 && nz >= 0){
+      if ((int(nx)+int(nz)) % 2 == 0){
+        change_color(sph, 0);
+      }
+      else
+        change_color(sph, 1);
+    }
+    else
+      return -1;
+  }
+
+  check->x = o.x + k * v.x;
+  check->y = o.y + k * v.y;
+  check->z = o.z + k * v.z;
 
   return k;
 }
@@ -43,7 +81,7 @@ float intersect_sphere(Point o, Vector v, Spheres *sph, Point &check) {
  * which arguments to use for the function. For exmaple, note that you
  * should return the point of intersection to the calling function.
  **********************************************************************/
-Spheres *intersect_scene(Point eye, Vector ray, Spheres *scene, Point &hit) {
+Spheres *intersect_scene(Point eye, Vector ray, Spheres *scene, Point *hit) {
 //
 // do your thing here
 //
@@ -54,12 +92,14 @@ Spheres *intersect_scene(Point eye, Vector ray, Spheres *scene, Point &hit) {
   Spheres *result = NULL;
 
   while (ptr != NULL){
-    float tmp = intersect_sphere(eye, ray, ptr, check);
+    float tmp = intersect_sphere(eye, ray, ptr, &check);
 
-    if (tmp > 0 && tmp < para){
+    if (tmp >= 0 && tmp < para){
       para = tmp;
       result = ptr;
-      hit = check;
+      hit->x = check.x;
+      hit->y = check.y;
+      hit->z = check.z;
     }
     ptr = ptr -> next;
   }
