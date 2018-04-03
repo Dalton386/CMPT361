@@ -84,7 +84,7 @@ int refrac_on = 0;
 int chessb_on = 0;
 int stocha_on = 0;
 int supers_on = 0;
-float transparency = 0.5;
+float refractance = 0.5;
 
 
 // OpenGL
@@ -240,16 +240,17 @@ int main( int argc, char **argv )
 		else if (strcmp(argv[i], "+c") == 0)	{
 			chessb_on = 1;
 			
-			Point chessb_ctr = {-4, -2, -6};
+			Point chessb_ctr = {-4, -2, -8};
 			float chessb_rad = 1;
 			float chessb_ambient[] = {1, 1, 1};
 			float chessb_diffuse[] = {1, 1, 1};
 			float chessb_specular[] = {1, 1, 1};
 			float chessb_shineness = 6;
 			float chessb_reflectance = 0.3;
+			float chessb_transparency = 1.5;
 			scene = add_sphere(scene, chessb_ctr, chessb_rad, chessb_ambient,
 			         chessb_diffuse, chessb_specular, chessb_shineness,
-				     chessb_reflectance, -1);
+				     chessb_reflectance, chessb_transparency, -1);
 		}
 		else if (strcmp(argv[i], "+f") == 0)	{
 			stocha_on = 1;

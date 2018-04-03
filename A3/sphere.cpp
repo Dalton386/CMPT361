@@ -29,8 +29,7 @@ void change_color(Spheres *sph, int opt){
 
 }
 
-
-float intersect_sphere(Point o, Vector v, Spheres *sph, Point *check) {
+float intersect_sphere(Point o, Vector v, Spheres *sph, Point *check, bool inside) {
   Point ctr = sph->center;
   float r = sph->radius;
   float k;
@@ -45,7 +44,10 @@ float intersect_sphere(Point o, Vector v, Spheres *sph, Point *check) {
     if (delta < 0)
       return -1;
 
-    k = (-b - sqrt(delta))/(2*a);
+    if (inside)
+      k = (-b + sqrt(delta))/(2*a);
+    else
+      k = (-b - sqrt(delta))/(2*a);
   }
   else {
     float depth = ctr.y;
@@ -81,7 +83,7 @@ float intersect_sphere(Point o, Vector v, Spheres *sph, Point *check) {
  * which arguments to use for the function. For exmaple, note that you
  * should return the point of intersection to the calling function.
  **********************************************************************/
-Spheres *intersect_scene(Point eye, Vector ray, Spheres *scene, Point *hit) {
+Spheres *intersect_scene(Point eye, Vector ray, Spheres *scene, Point *hit, bool inside) {
 //
 // do your thing here
 //
@@ -92,7 +94,7 @@ Spheres *intersect_scene(Point eye, Vector ray, Spheres *scene, Point *hit) {
   Spheres *result = NULL;
 
   while (ptr != NULL){
-    float tmp = intersect_sphere(eye, ray, ptr, &check);
+    float tmp = intersect_sphere(eye, ray, ptr, &check, inside);
 
     if (tmp >= 0 && tmp < para){
       para = tmp;
@@ -114,7 +116,7 @@ Spheres *intersect_scene(Point eye, Vector ray, Spheres *scene, Point *hit) {
  *****************************************************/
 Spheres *add_sphere(Spheres *slist, Point ctr, float rad, float amb[],
 		    float dif[], float spe[], float shine, 
-		    float refl, int sindex) {
+		    float refl, float trans, int sindex) {
   Spheres *new_sphere;
 
   new_sphere = (Spheres *)malloc(sizeof(Spheres));
@@ -132,6 +134,7 @@ Spheres *add_sphere(Spheres *slist, Point ctr, float rad, float amb[],
   (new_sphere->mat_specular)[2] = spe[2];
   new_sphere->mat_shineness = shine;
   new_sphere->reflectance = refl;
+  new_sphere->transparency = trans;
   new_sphere->next = NULL;
 
   if (slist == NULL) { // first object

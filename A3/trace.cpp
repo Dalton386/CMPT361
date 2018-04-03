@@ -5,6 +5,8 @@
 #include "sphere.h"
 #include <algorithm>
 #include <iostream>
+#include <time.h>
+#include <stdlib.h>
 using namespace std;
 
 //
@@ -46,13 +48,14 @@ extern int refrac_on;
 extern int chessb_on;
 extern int stocha_on;
 extern int supers_on;
+extern float refractance;
 
 /////////////////////////////////////////////////////////////////////
 
 /*********************************************************************
  * Phong illumination - you need to implement this!
  *********************************************************************/
-RGB_float phong(Vector n, Vector l, Vector v, Vector r, Point q, Spheres *sph) {
+RGB_float phong(Vector n, Vector l, Vector v, Vector r, Point q, Spheres *sph, bool inside) {
 	RGB_float color;
 
   RGB_float amb;
@@ -64,11 +67,14 @@ RGB_float phong(Vector n, Vector l, Vector v, Vector r, Point q, Spheres *sph) {
     Point hit;
     hit.x = hit.y = hit.z = -10;
     Vector ray = get_vec(q, light1);
-    Spheres *hitsph = intersect_scene(q, ray, scene, &hit);
+    Spheres *hitsph = intersect_scene(q, ray, scene, &hit, false);
     float len = vec_len(get_vec(q, hit));
     if (hitsph != NULL && vec_len(ray) >= len){
       return amb;
     }
+
+    if (inside)
+      return amb;
   }
 
   float dist = vec_len(get_vec(q, light1));
@@ -102,20 +108,24 @@ RGB_float phong(Vector n, Vector l, Vector v, Vector r, Point q, Spheres *sph) {
  * This is the recursive ray tracer - you need to implement this!
  * You should decide what arguments to use.
  ************************************************************************/
-RGB_float recursive_ray_trace(Point eye, Vector ray, int step) {
+RGB_float recursive_ray_trace(Point eye, Vector ray, int step, bool inside) {
   if (step > step_max)
     return background_clr;
 
   Point hit;
   hit.x = hit.y = hit.z = -1;
-  Spheres *hitsph = intersect_scene(eye, ray, scene, &hit);
+  Spheres *hitsph = intersect_scene(eye, ray, scene, &hit, inside);
 
   if (hitsph == NULL) 
     return background_clr;
 
   Vector n = {0, 1, 0};
-  if (hitsph->index > 0)
-    n = sphere_normal(hit, hitsph);
+  if (hitsph->index > 0){
+    if (!inside)
+      n = sphere_normal(hit, hitsph);
+    else
+      n = vec_scale(sphere_normal(hit, hitsph), -1);
+  }
 
   Vector v = get_vec(hit, eye);
   normalize(&v);
@@ -125,18 +135,52 @@ RGB_float recursive_ray_trace(Point eye, Vector ray, int step) {
   normalize(&r);
   Vector vr = vec_minus(vec_scale(n, 2*vec_dot(n, v)), v);
   normalize(&vr);
+  RGB_float phclr = phong(n, l, v, r, hit, hitsph, inside);
 
-  RGB_float phclr = phong(n, l, v, r, hit, hitsph);
   RGB_float rfclr, rrclr;
   rfclr.r = rfclr.g = rfclr.b = 0;
   rrclr.r = rrclr.g = rrclr.b = 0;
   if (reflec_on == 1){
-    rfclr = clr_scale(recursive_ray_trace(hit, vr, step+1), hitsph->reflectance);
+    rfclr = clr_scale(recursive_ray_trace(hit, vr, step+1, inside), hitsph->reflectance);
   }
-  
 
+  // consider refraction
+  if (refrac_on == 1 && hitsph->index > 0){
+    float ratio = 1 / hitsph->transparency;
+    Vector nv = n;
+    Vector i = ray;
+    normalize(&i);
 
-  RGB_float color = clr_add(phclr, rfclr);
+    if (inside){
+      ratio = 1 / ratio;
+    }
+    float cosi = -1 * vec_dot(i, nv);
+    float sint2 = pow(ratio, 2) * (1 - pow(cosi, 2));
+    float para = ratio*cosi - sqrt(1 - sint2);
+
+    Vector t = vec_plus(vec_scale(i, ratio), vec_scale(nv, para));
+    rrclr = clr_scale(recursive_ray_trace(hit, t, step+1, !(inside)), refractance);
+  }
+
+  RGB_float stclr;
+  stclr.r = stclr.g = stclr.b = 0;
+  if (stocha_on == 1) {
+    int count = RAY_NUM;
+    Vector nnv;
+    while (count-- > 0) {
+      nnv = {rand()%10-5, rand()%10-5, rand()%10-5};
+      while (vec_dot(nnv, n) <= 0){
+        nnv = {rand()%10-5, rand()%10-5, rand()%10-5};
+      }
+
+      normalize(&nnv);
+      stclr = clr_add(stclr, clr_scale(recursive_ray_trace(hit, nnv, step+1, inside), hitsph->reflectance));
+    }
+
+    stclr = clr_scale (stclr, hitsph->reflectance/RAY_NUM);
+  }
+
+  RGB_float color = clr_add(clr_add(phclr, stclr) , clr_add(rfclr, rrclr));
 
 	return color;
 }
@@ -159,6 +203,7 @@ void ray_trace() {
   Point cur_pixel_pos;
   Vector ray;
   bool inside = false;
+  srand (time(NULL));
 
   // ray is cast through center of pixel
   cur_pixel_pos.x = x_start + 0.5 * x_grid_size;
@@ -167,12 +212,36 @@ void ray_trace() {
 
   for (i=0; i<win_height; i++) {
     for (j=0; j<win_width; j++) {
-      ray = get_vec(eye_pos, cur_pixel_pos);
+        ray = get_vec(eye_pos, cur_pixel_pos);
+        ret_color = recursive_ray_trace(eye_pos, ray, 0, inside);
 
-      //
-      // You need to change this!!!
-      //
-      ret_color = recursive_ray_trace(eye_pos, ray, 0);
+        if (supers_on == 1){
+          RGB_float clr = {0, 0, 0};
+          Point cur = cur_pixel_pos;
+          float dx = 0.25 * x_grid_size;
+          float dy = 0.25 * y_grid_size;
+          Point use;
+
+          use = {cur.x - dx, cur.y - dy, cur.z};
+          ray = get_vec(eye_pos, use);
+          clr = clr_add (clr, recursive_ray_trace(eye_pos, ray, 0, inside));
+
+          use = {cur.x + dx, cur.y + dy, cur.z};
+          ray = get_vec(eye_pos, use);
+          clr = clr_add (clr, recursive_ray_trace(eye_pos, ray, 0, inside));
+
+          use = {cur.x + dx, cur.y - dy, cur.z};
+          ray = get_vec(eye_pos, use);
+          clr = clr_add (clr, recursive_ray_trace(eye_pos, ray, 0, inside));     
+
+          use = {cur.x - dx, cur.y + dy, cur.z};
+          ray = get_vec(eye_pos, use);
+          clr = clr_add (clr, recursive_ray_trace(eye_pos, ray, 0, inside));    
+
+          ret_color = clr_add(clr, ret_color);
+        }
+
+
       // ret_color = background_clr; // just background for now
 
       // Parallel rays can be cast instead using below
