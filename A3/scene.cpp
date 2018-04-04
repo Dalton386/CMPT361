@@ -16,6 +16,7 @@ extern RGB_float background_clr;
 extern float decay_a;
 extern float decay_b;
 extern float decay_c;
+extern float refractance;
 
 //////////////////////////////////////////////////////////////////////////
 
@@ -30,6 +31,9 @@ void set_up_default_scene() {
 
   // setup global ambient term
   global_ambient[0] = global_ambient[1] = global_ambient[2] = 0.2;
+
+  // spheres are opaque in default scene
+  refractance = 0;
 
   // setup light 1
   light1.x = -2.0;
@@ -76,7 +80,7 @@ void set_up_default_scene() {
   float sphere3_ambient[] = {0.2, 0.2, 0.2};
   float sphere3_diffuse[] = {0.0, 1.0, 0.25};
   float sphere3_specular[] = {0.0, 1.0, 0.0};
-  float sphere3_shineness = 10;
+  float sphere3_shineness = 30;
   float sphere3_reflectance = 0.3;
   float sphere3_transparency = 1.5;
   scene = add_sphere(scene, sphere3_ctr, sphere3_rad, sphere3_ambient,
@@ -95,6 +99,9 @@ void set_up_user_scene() {
 
   // setup global ambient term
   global_ambient[0] = global_ambient[1] = global_ambient[2] = 0.2;
+
+  // spheres are transparent in default scene
+  refractance = 0.5;
 
   // setup light 1
   light1.x = -2.0;
@@ -141,7 +148,7 @@ void set_up_user_scene() {
   float sphere3_ambient[] = {0.2, 0.2, 0.2};
   float sphere3_diffuse[] = {0.0, 1.0, 0.25};
   float sphere3_specular[] = {0.0, 1.0, 0.0};
-  float sphere3_shineness = 10;
+  float sphere3_shineness = 30;
   float sphere3_reflectance = 0.3;
   float sphere3_transparency = 1.5;
   scene = add_sphere(scene, sphere3_ctr, sphere3_rad, sphere3_ambient,

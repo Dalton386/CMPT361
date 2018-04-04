@@ -245,7 +245,7 @@ int main( int argc, char **argv )
 			float chessb_ambient[] = {1, 1, 1};
 			float chessb_diffuse[] = {1, 1, 1};
 			float chessb_specular[] = {1, 1, 1};
-			float chessb_shineness = 6;
+			float chessb_shineness = 10;
 			float chessb_reflectance = 0.3;
 			float chessb_transparency = 1.5;
 			scene = add_sphere(scene, chessb_ctr, chessb_rad, chessb_ambient,

@@ -177,7 +177,7 @@ RGB_float recursive_ray_trace(Point eye, Vector ray, int step, bool inside) {
       stclr = clr_add(stclr, clr_scale(recursive_ray_trace(hit, nnv, step+1, inside), hitsph->reflectance));
     }
 
-    stclr = clr_scale (stclr, hitsph->reflectance/RAY_NUM);
+    stclr = clr_scale (stclr, 1.0/RAY_NUM);
   }
 
   RGB_float color = clr_add(clr_add(phclr, stclr) , clr_add(rfclr, rrclr));

@@ -17,9 +17,9 @@ using namespace std;
  **********************************************************************/
 void change_color(Spheres *sph, int opt){
   if (opt == 0) {
-    sph->mat_ambient[0] = sph->mat_ambient[1] = sph->mat_ambient[2] = 0.5;
-    sph->mat_diffuse[0] = sph->mat_diffuse[1] = sph->mat_diffuse[2] = 0.5;
-    sph->mat_specular[0] = sph->mat_specular[1] = sph->mat_specular[2] = 0.5;
+    sph->mat_ambient[0] = sph->mat_ambient[1] = sph->mat_ambient[2] = 0;
+    sph->mat_diffuse[0] = sph->mat_diffuse[1] = sph->mat_diffuse[2] = 0;
+    sph->mat_specular[0] = sph->mat_specular[1] = sph->mat_specular[2] = 0;
   }
   else {
     sph->mat_ambient[0] = sph->mat_ambient[1] = sph->mat_ambient[2] = 1;
